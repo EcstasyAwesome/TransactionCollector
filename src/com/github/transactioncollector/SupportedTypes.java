@@ -6,21 +6,15 @@ public enum SupportedTypes {
     XLSX("xlsx"),
     ZIP("zip");
 
-    private String type;
+    public final String pattern;
+    public final String extension;
 
     SupportedTypes(String type) {
-        this.type = type;
+        pattern = "*." + type;
+        extension = "." + type;
     }
 
-    public String getType() {
-        return type;
-    }
-
-    public String getSuffix() {
-        return "." + type;
-    }
-
-    public static String[] getTypes() {
-        return Stream.of(SupportedTypes.values()).map(SupportedTypes::getType).toArray(String[]::new);
+    public static String[] getPatterns() {
+        return Stream.of(SupportedTypes.values()).map(type -> type.pattern).toArray(String[]::new);
     }
 }

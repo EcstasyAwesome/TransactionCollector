@@ -1,7 +1,6 @@
 package com.github.transactioncollector;
 
-import com.github.transactioncollector.ui.GraphicInterface;
-import com.github.transactioncollector.ui.UserInterface;
+import javafx.scene.control.Alert;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 
@@ -9,79 +8,55 @@ import java.io.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.zip.ZipFile;
 
 public class Collector {
 
+    private CollectorEvent collectorEvent;
     private Map<LocalDate, Double> list = new TreeMap<>();
-    private UserInterface userInterface = new GraphicInterface();
-    private String message;
 
-    public void run() {
-        File[] files = userInterface.fileChooser();
-        if (files.length > 0) {
-            userInterface.showBar();
-            for (File file : files) {
-                try {
-                    if (file.getName().endsWith(SupportedTypes.XLSX.getSuffix())) readFile(new FileInputStream(file));
-                    else if (file.getName().endsWith(SupportedTypes.ZIP.getSuffix())) readFilesFromZip(file);
-                } catch (IOException e) {
-                    message = e.getMessage();
-                }
-            }
-            createResultFile(files[0]);
-            userInterface.closeBar(message);
+    public static class CollectorEvent {
+        private Alert.AlertType type;
+        private String message;
+
+        private CollectorEvent(Alert.AlertType type, String message) {
+            this.type = type;
+            this.message = message;
+        }
+
+        public Alert.AlertType getType() {
+            return type;
+        }
+
+        public String getMessage() {
+            return message;
         }
     }
 
-    private void createResultFile(File anyProcessedFile) {
-        String filePath = anyProcessedFile.getParent() +
-                File.separator +
-                "result_" +
-                new SimpleDateFormat("kkmmss").format(new Date()) +
-                SupportedTypes.XLSX.getSuffix();
-        try (Workbook workbook = WorkbookFactory.create(true)) {
-            if (list.isEmpty()) throw new NullPointerException("Invalid input data!");
-            int x = 0;
-            for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {
-                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
-                String sheetName = entry.getKey().format(dateTimeFormatter);
-                Sheet sheet = workbook.getSheet(sheetName);
-                if (Objects.isNull(sheet)) {
-                    x = 0;
-                    sheet = workbook.createSheet(sheetName);
-                    Row row = sheet.createRow(x++);
-                    row.createCell(0).setCellValue("Day");
-                    row.createCell(1).setCellValue("Sum");
-                }
-                Row row = sheet.createRow(x);
-                row.createCell(0).setCellValue(entry.getKey().getDayOfMonth());
-                row.createCell(1).setCellValue(entry.getValue());
-                CellRangeAddress range = new CellRangeAddress(1, x, 1, 1);
-                row = sheet.createRow(++x);
-                row.createCell(0).setCellValue("Total:");
-                row.createCell(1).setCellFormula("SUM(" + range.formatAsString() + ")");
+    public Collector.CollectorEvent processFiles(List<File> fileList) {
+        fileList.forEach(file -> {
+            try {
+                if (file.getName().endsWith(SupportedTypes.XLSX.extension))
+                    readFile(new FileInputStream(file));
+                else if (file.getName().endsWith(SupportedTypes.ZIP.extension)) readFilesFromZip(file);
+            } catch (IOException e) {
+                collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
             }
-            workbook.write(new FileOutputStream(filePath));
-            message = String.format("'%s' is successfully created!", filePath);
-        } catch (Exception e) {
-            message = e.getMessage();
-        }
+        });
+        createResultFile(fileList.get(0));
+        return collectorEvent;
     }
 
     private void readFilesFromZip(File zip) throws IOException {
         try (ZipFile archive = new ZipFile(zip)) {
             archive.stream()
-                    .filter(file -> !file.isDirectory() && file.getName().endsWith(SupportedTypes.XLSX.getSuffix()))
+                    .filter(file -> !file.isDirectory() && file.getName().endsWith(SupportedTypes.XLSX.extension))
                     .forEach(file -> {
                         try {
                             readFile(archive.getInputStream(file));
                         } catch (IOException e) {
-                            message = e.getMessage();
+                            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
                         }
                     });
 
@@ -134,7 +109,88 @@ public class Collector {
                 }
             }
         } catch (IOException e) {
-            message = e.getMessage();
+            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
         }
+    }
+
+    private void createResultFile(File anyReadFile) {
+        try {
+            if (list.isEmpty()) throw new NullPointerException("Invalid input data!");
+            String filePath = anyReadFile.getParent() +
+                    File.separator +
+                    "result_" +
+                    new SimpleDateFormat("kkmmss").format(new Date()) +
+                    SupportedTypes.XLSX.extension;
+            Workbook workbook = WorkbookFactory.create(true);
+            final int firstRow = 1, columnB = 1, columnC = 2;
+            int currentRow = 0;
+            for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {
+                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
+                String sheetName = entry.getKey().format(dateTimeFormatter);
+                Sheet sheet = workbook.getSheet(sheetName);
+                if (Objects.isNull(sheet)) {
+                    currentRow = firstRow;
+                    sheet = workbook.createSheet(sheetName);
+                    Row row = sheet.createRow(currentRow++);
+                    Cell dayCell = row.createCell(columnB);
+                    dayCell.setCellStyle(getTitleCellStyle(workbook));
+                    dayCell.setCellValue("Day");
+                    Cell sumCell = row.createCell(columnC);
+                    sumCell.setCellStyle(getTitleCellStyle(workbook));
+                    sumCell.setCellValue("Sum");
+                }
+                Row dataRow = sheet.createRow(currentRow);
+                Cell dayCell = dataRow.createCell(columnB);
+                dayCell.setCellStyle(getBaseCellStyle(workbook));
+                dayCell.setCellValue(entry.getKey().getDayOfMonth());
+                Cell sumCell = dataRow.createCell(columnC);
+                sumCell.setCellStyle(getBaseCellStyle(workbook));
+                sumCell.setCellValue(entry.getValue());
+                CellRangeAddress range = new CellRangeAddress(firstRow + 1, currentRow, columnC, columnC);
+                Row finalRow = sheet.createRow(++currentRow);
+                Cell totalCell = finalRow.createCell(columnB);
+                totalCell.setCellStyle(getTotalCellStyle(workbook));
+                totalCell.setCellValue("Total:");
+                Cell totalSumCell = finalRow.createCell(columnC);
+                totalSumCell.setCellStyle(getTotalCellStyle(workbook));
+                totalSumCell.setCellFormula("SUM(" + range.formatAsString() + ")");
+            }
+            workbook.write(new FileOutputStream(filePath));
+            String message = String.format("'%s' is successfully created!", filePath);
+            collectorEvent = new CollectorEvent(Alert.AlertType.INFORMATION, message);
+        } catch (Exception e) {
+            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
+        }
+    }
+
+    private CellStyle getTitleCellStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.index);
+        setBordersStyle(style);
+        return style;
+    }
+
+    private CellStyle getBaseCellStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        setBordersStyle(style);
+        return style;
+    }
+
+    private CellStyle getTotalCellStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.index);
+        setBordersStyle(style);
+        return style;
+    }
+
+    private void setBordersStyle(CellStyle style) {
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
     }
 }

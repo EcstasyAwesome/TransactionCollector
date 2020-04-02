@@ -19,6 +19,8 @@ import java.util.Objects;
 
 public class App extends Application {
 
+    private String title = "Collector";
+
     public static void main(String[] args) {
         App.launch(args);
     }
@@ -40,7 +42,7 @@ public class App extends Application {
             root.getChildren().addAll(label, progressBar);
             Scene scene = new Scene(root);
             stage.setOnCloseRequest(event -> System.exit(0));
-            stage.setTitle("Collector");
+            stage.setTitle(title);
             stage.setScene(scene);
             stage.setResizable(false);
             stage.show();
@@ -59,7 +61,7 @@ public class App extends Application {
             stage.close();
             Collector.CollectorEvent collectorEvent = task.getValue();
             Alert alert = new Alert(collectorEvent.getType());
-            alert.setTitle("Message");
+            alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(collectorEvent.getMessage());
             alert.showAndWait();

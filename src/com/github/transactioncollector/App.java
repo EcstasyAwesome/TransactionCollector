@@ -64,7 +64,7 @@ public class App extends Application {
             alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(collectorEvent.getMessage());
-            alert.showAndWait();
+            alert.show();
         });
         new Thread(task).start();
     }

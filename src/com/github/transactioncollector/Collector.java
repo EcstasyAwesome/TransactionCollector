@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class Collector {
@@ -34,36 +35,32 @@ public class Collector {
         }
     }
 
-    public Collector.CollectorEvent processFiles(List<File> fileList) {
-        fileList.forEach(file -> {
-            try {
-                if (file.getName().endsWith(SupportedTypes.XLSX.extension))
-                    readFile(new FileInputStream(file));
+    public CollectorEvent processFiles(List<File> fileList) {
+        try {
+            Objects.requireNonNull(fileList);
+            for (File file : fileList) {
+                if (file.getName().endsWith(SupportedTypes.XLSX.extension)) readFile(new FileInputStream(file));
                 else if (file.getName().endsWith(SupportedTypes.ZIP.extension)) readFilesFromZip(file);
-            } catch (IOException e) {
-                collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
             }
-        });
-        createResultFile(fileList.get(0));
+            createResultFile(fileList.get(0));
+        } catch (Exception e) {
+            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
+        }
         return collectorEvent;
     }
 
     private void readFilesFromZip(File zip) throws IOException {
         try (ZipFile archive = new ZipFile(zip)) {
-            archive.stream()
-                    .filter(file -> !file.isDirectory() && file.getName().endsWith(SupportedTypes.XLSX.extension))
-                    .forEach(file -> {
-                        try {
-                            readFile(archive.getInputStream(file));
-                        } catch (IOException e) {
-                            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
-                        }
-                    });
-
+            ZipEntry[] entries = archive.stream()
+                    .filter(entry -> !entry.isDirectory() && entry.getName().endsWith(SupportedTypes.XLSX.extension))
+                    .toArray(ZipEntry[]::new);
+            for (ZipEntry entry : entries) {
+                readFile(archive.getInputStream(entry));
+            }
         }
     }
 
-    private void readFile(InputStream excel) {
+    private void readFile(InputStream excel) throws IOException {
         try (Workbook workbook = WorkbookFactory.create(excel)) {
             for (int sheetId = 0; sheetId < workbook.getNumberOfSheets(); sheetId++) {
                 Sheet sheet = workbook.getSheetAt(sheetId);
@@ -108,59 +105,53 @@ public class Collector {
                     }
                 }
             }
-        } catch (IOException e) {
-            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
         }
     }
 
-    private void createResultFile(File anyReadFile) {
-        try {
-            if (list.isEmpty()) throw new NullPointerException("Invalid input data!");
-            String filePath = anyReadFile.getParent() +
-                    File.separator +
-                    "result_" +
-                    new SimpleDateFormat("kkmmss").format(new Date()) +
-                    SupportedTypes.XLSX.extension;
-            Workbook workbook = WorkbookFactory.create(true);
-            final int firstRow = 1, columnB = 1, columnC = 2;
-            int currentRow = 0;
-            for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {
-                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
-                String sheetName = entry.getKey().format(dateTimeFormatter);
-                Sheet sheet = workbook.getSheet(sheetName);
-                if (Objects.isNull(sheet)) {
-                    currentRow = firstRow;
-                    sheet = workbook.createSheet(sheetName);
-                    Row row = sheet.createRow(currentRow++);
-                    Cell dayCell = row.createCell(columnB);
-                    dayCell.setCellStyle(getTitleCellStyle(workbook));
-                    dayCell.setCellValue("Day");
-                    Cell sumCell = row.createCell(columnC);
-                    sumCell.setCellStyle(getTitleCellStyle(workbook));
-                    sumCell.setCellValue("Sum");
-                }
-                Row dataRow = sheet.createRow(currentRow);
-                Cell dayCell = dataRow.createCell(columnB);
-                dayCell.setCellStyle(getBaseCellStyle(workbook));
-                dayCell.setCellValue(entry.getKey().getDayOfMonth());
-                Cell sumCell = dataRow.createCell(columnC);
-                sumCell.setCellStyle(getBaseCellStyle(workbook));
-                sumCell.setCellValue(entry.getValue());
-                CellRangeAddress range = new CellRangeAddress(firstRow + 1, currentRow, columnC, columnC);
-                Row finalRow = sheet.createRow(++currentRow);
-                Cell totalCell = finalRow.createCell(columnB);
-                totalCell.setCellStyle(getTotalCellStyle(workbook));
-                totalCell.setCellValue("Total:");
-                Cell totalSumCell = finalRow.createCell(columnC);
-                totalSumCell.setCellStyle(getTotalCellStyle(workbook));
-                totalSumCell.setCellFormula("SUM(" + range.formatAsString() + ")");
+    private void createResultFile(File anyReadFile) throws IOException {
+        if (list.isEmpty()) throw new NullPointerException("Invalid input data!");
+        String filePath = anyReadFile.getParent() +
+                File.separator +
+                "result_" +
+                new SimpleDateFormat("kkmmss").format(new Date()) +
+                SupportedTypes.XLSX.extension;
+        Workbook workbook = WorkbookFactory.create(true);
+        final int firstRow = 1, columnB = 1, columnC = 2;
+        int currentRow = 0;
+        for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {
+            DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
+            String sheetName = entry.getKey().format(dateTimeFormatter);
+            Sheet sheet = workbook.getSheet(sheetName);
+            if (Objects.isNull(sheet)) {
+                currentRow = firstRow;
+                sheet = workbook.createSheet(sheetName);
+                Row row = sheet.createRow(currentRow++);
+                Cell dayCell = row.createCell(columnB);
+                dayCell.setCellStyle(getTitleCellStyle(workbook));
+                dayCell.setCellValue("Day");
+                Cell sumCell = row.createCell(columnC);
+                sumCell.setCellStyle(getTitleCellStyle(workbook));
+                sumCell.setCellValue("Sum");
             }
-            workbook.write(new FileOutputStream(filePath));
-            String message = String.format("'%s' is successfully created!", filePath);
-            collectorEvent = new CollectorEvent(Alert.AlertType.INFORMATION, message);
-        } catch (Exception e) {
-            collectorEvent = new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
+            Row dataRow = sheet.createRow(currentRow);
+            Cell dayCell = dataRow.createCell(columnB);
+            dayCell.setCellStyle(getBaseCellStyle(workbook));
+            dayCell.setCellValue(entry.getKey().getDayOfMonth());
+            Cell sumCell = dataRow.createCell(columnC);
+            sumCell.setCellStyle(getBaseCellStyle(workbook));
+            sumCell.setCellValue(entry.getValue());
+            CellRangeAddress range = new CellRangeAddress(firstRow + 1, currentRow, columnC, columnC);
+            Row finalRow = sheet.createRow(++currentRow);
+            Cell totalCell = finalRow.createCell(columnB);
+            totalCell.setCellStyle(getTotalCellStyle(workbook));
+            totalCell.setCellValue("Total:");
+            Cell totalSumCell = finalRow.createCell(columnC);
+            totalSumCell.setCellStyle(getTotalCellStyle(workbook));
+            totalSumCell.setCellFormula("SUM(" + range.formatAsString() + ")");
         }
+        workbook.write(new FileOutputStream(filePath));
+        String message = String.format("'%s' is successfully created!", filePath);
+        collectorEvent = new CollectorEvent(Alert.AlertType.INFORMATION, message);
     }
 
     private CellStyle getTitleCellStyle(Workbook workbook) {

@@ -28,22 +28,17 @@ public class App extends Application {
         FileChooser fileChooser = new FileChooser();
         FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter("Supported types", SupportedTypes.getPatterns());
         fileChooser.getExtensionFilters().add(filter);
-
         List<File> files = fileChooser.showOpenMultipleDialog(stage);
         if (Objects.nonNull(files)) {
             VBox root = new VBox();
             root.setAlignment(Pos.CENTER);
             root.setPadding(new Insets(10));
             root.setSpacing(10);
-
             ProgressBar progressBar = new ProgressBar();
             progressBar.setPrefSize(200, 30);
-
             Label label = new Label("Your data is being processed");
-
             root.getChildren().addAll(label, progressBar);
             Scene scene = new Scene(root);
-
             stage.setOnCloseRequest(event -> System.exit(0));
             stage.setTitle("Collector");
             stage.setScene(scene);
@@ -60,7 +55,6 @@ public class App extends Application {
                 return new Collector().processFiles(files);
             }
         };
-
         task.setOnSucceeded(event -> {
             stage.close();
             Collector.CollectorEvent collectorEvent = task.getValue();

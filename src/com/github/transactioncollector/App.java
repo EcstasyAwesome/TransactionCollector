@@ -19,7 +19,7 @@ import java.util.Objects;
 
 public class App extends Application {
 
-    private String title = "Collector";
+    private final String title = "Collector";
 
     public static void main(String[] args) {
         App.launch(args);

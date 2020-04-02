@@ -15,7 +15,7 @@ import java.util.zip.ZipFile;
 public class Collector {
 
     private CollectorEvent collectorEvent;
-    private Map<LocalDate, Double> list = new TreeMap<>();
+    private final Map<LocalDate, Double> list = new TreeMap<>();
 
     public static class CollectorEvent {
         private Alert.AlertType type;

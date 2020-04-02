@@ -165,6 +165,7 @@ public class Collector {
 
     private CellStyle getBaseCellStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.RIGHT);
         setBordersStyle(style);
         return style;
     }

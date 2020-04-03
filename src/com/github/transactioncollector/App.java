@@ -16,10 +16,11 @@ import javafx.stage.Stage;
 import java.io.File;
 import java.util.List;
 import java.util.Objects;
+import java.util.ResourceBundle;
 
 public class App extends Application {
 
-    private final String title = "Collector";
+    private ResourceBundle languageBundle = ResourceContainer.LANGUAGE_BUNDLE;
 
     public static void main(String[] args) {
         App.launch(args);
@@ -28,7 +29,9 @@ public class App extends Application {
     @Override
     public void start(Stage stage) {
         FileChooser fileChooser = new FileChooser();
-        FileChooser.ExtensionFilter filter = new FileChooser.ExtensionFilter("Supported types", SupportedTypes.getPatterns());
+        fileChooser.setTitle(languageBundle.getString("app.title"));
+        FileChooser.ExtensionFilter filter =
+                new FileChooser.ExtensionFilter(languageBundle.getString("app.types"), SupportedTypes.getPatterns());
         fileChooser.getExtensionFilters().add(filter);
         List<File> files = fileChooser.showOpenMultipleDialog(stage);
         if (Objects.nonNull(files)) {
@@ -38,11 +41,11 @@ public class App extends Application {
             root.setSpacing(10);
             ProgressBar progressBar = new ProgressBar();
             progressBar.setPrefSize(200, 30);
-            Label label = new Label("Your data is being processed");
+            Label label = new Label(languageBundle.getString("app.process"));
             root.getChildren().addAll(label, progressBar);
             Scene scene = new Scene(root);
             stage.setOnCloseRequest(event -> System.exit(0));
-            stage.setTitle(title);
+            stage.setTitle(languageBundle.getString("app.title"));
             stage.setScene(scene);
             stage.setResizable(false);
             stage.show();
@@ -61,7 +64,7 @@ public class App extends Application {
             stage.close();
             Collector.CollectorEvent collectorEvent = task.getValue();
             Alert alert = new Alert(collectorEvent.getType());
-            alert.setTitle(title);
+            alert.setTitle(languageBundle.getString("app.title"));
             alert.setHeaderText(null);
             alert.setContentText(collectorEvent.getMessage());
             alert.show();

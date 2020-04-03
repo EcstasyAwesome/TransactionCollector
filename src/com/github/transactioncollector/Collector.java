@@ -15,6 +15,7 @@ import java.util.zip.ZipFile;
 public class Collector {
 
     private CollectorEvent collectorEvent;
+    private ResourceBundle languageBundle = ResourceContainer.LANGUAGE_BUNDLE;
     private final Map<LocalDate, Double> list = new TreeMap<>();
 
     public static class CollectorEvent {
@@ -109,7 +110,7 @@ public class Collector {
     }
 
     private void createResultFile(File anyReadFile) throws IOException {
-        if (list.isEmpty()) throw new NullPointerException("Invalid input data!");
+        if (list.isEmpty()) throw new NullPointerException(languageBundle.getString("app.error"));
         String filePath = anyReadFile.getParent() +
                 File.separator +
                 "result_" +
@@ -128,10 +129,10 @@ public class Collector {
                 Row row = sheet.createRow(currentRow++);
                 Cell dayCell = row.createCell(columnB);
                 dayCell.setCellStyle(getTitleCellStyle(workbook));
-                dayCell.setCellValue("Day");
+                dayCell.setCellValue(languageBundle.getString("excel.day"));
                 Cell sumCell = row.createCell(columnC);
                 sumCell.setCellStyle(getTitleCellStyle(workbook));
-                sumCell.setCellValue("Sum");
+                sumCell.setCellValue(languageBundle.getString("excel.sum"));
             }
             Row dataRow = sheet.createRow(currentRow);
             Cell dayCell = dataRow.createCell(columnB);
@@ -144,13 +145,13 @@ public class Collector {
             Row finalRow = sheet.createRow(++currentRow);
             Cell totalCell = finalRow.createCell(columnB);
             totalCell.setCellStyle(getTotalCellStyle(workbook));
-            totalCell.setCellValue("Total:");
+            totalCell.setCellValue(languageBundle.getString("excel.total"));
             Cell totalSumCell = finalRow.createCell(columnC);
             totalSumCell.setCellStyle(getTotalCellStyle(workbook));
             totalSumCell.setCellFormula("SUM(" + range.formatAsString() + ")");
         }
         workbook.write(new FileOutputStream(filePath));
-        String message = String.format("'%s' is successfully created!", filePath);
+        String message = String.format(languageBundle.getString("app.complete"), filePath);
         collectorEvent = new CollectorEvent(Alert.AlertType.INFORMATION, message);
     }
 

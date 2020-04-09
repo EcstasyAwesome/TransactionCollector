@@ -117,7 +117,7 @@ public class Collector {
                 new SimpleDateFormat("kkmmss").format(new Date()) +
                 SupportedTypes.XLSX.extension;
         try (Workbook workbook = WorkbookFactory.create(true)) {
-            DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
+            final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
             final int firstRow = 1, columnB = 1, columnC = 2;
             int currentRow = 0;
             for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {

@@ -9,7 +9,6 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -118,16 +117,16 @@ public class Collector {
                 new SimpleDateFormat("kkmmss").format(new Date()) +
                 SupportedTypes.XLSX.extension;
         try (Workbook workbook = WorkbookFactory.create(true)) {
+            DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
             final int firstRow = 1, columnB = 1, columnC = 2;
-            final AtomicInteger currentRow = new AtomicInteger();
-            final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("MM.yyyy");
-            list.forEach((date, value) -> {
-                String sheetName = date.format(dateTimeFormatter);
+            int currentRow = 0;
+            for (Map.Entry<LocalDate, Double> entry : list.entrySet()) {
+                String sheetName = entry.getKey().format(dateTimeFormatter);
                 Sheet sheet = workbook.getSheet(sheetName);
                 if (Objects.isNull(sheet)) {
-                    currentRow.set(firstRow);
+                    currentRow = firstRow;
                     sheet = workbook.createSheet(sheetName);
-                    Row row = sheet.createRow(currentRow.getAndIncrement());
+                    Row row = sheet.createRow(currentRow++);
                     Cell dayCell = row.createCell(columnB);
                     dayCell.setCellStyle(getTitleCellStyle(workbook));
                     dayCell.setCellValue(languageBundle.getString("excel.day"));
@@ -135,22 +134,22 @@ public class Collector {
                     sumCell.setCellStyle(getTitleCellStyle(workbook));
                     sumCell.setCellValue(languageBundle.getString("excel.sum"));
                 }
-                Row dataRow = sheet.createRow(currentRow.get());
+                Row dataRow = sheet.createRow(currentRow);
                 Cell dayCell = dataRow.createCell(columnB);
                 dayCell.setCellStyle(getBaseCellStyle(workbook));
-                dayCell.setCellValue(date.getDayOfMonth());
+                dayCell.setCellValue(entry.getKey().getDayOfMonth());
                 Cell sumCell = dataRow.createCell(columnC);
                 sumCell.setCellStyle(getBaseCellStyle(workbook));
-                sumCell.setCellValue(value);
-                CellRangeAddress range = new CellRangeAddress(firstRow + 1, currentRow.get(), columnC, columnC);
-                Row finalRow = sheet.createRow(currentRow.incrementAndGet());
+                sumCell.setCellValue(entry.getValue());
+                CellRangeAddress range = new CellRangeAddress(firstRow + 1, currentRow, columnC, columnC);
+                Row finalRow = sheet.createRow(++currentRow);
                 Cell totalCell = finalRow.createCell(columnB);
                 totalCell.setCellStyle(getTotalCellStyle(workbook));
                 totalCell.setCellValue(languageBundle.getString("excel.total"));
                 Cell totalSumCell = finalRow.createCell(columnC);
                 totalSumCell.setCellStyle(getTotalCellStyle(workbook));
                 totalSumCell.setCellFormula("SUM(" + range.formatAsString() + ")");
-            });
+            }
             workbook.write(new FileOutputStream(filePath));
         }
         String message = String.format(languageBundle.getString("app.complete"), filePath);

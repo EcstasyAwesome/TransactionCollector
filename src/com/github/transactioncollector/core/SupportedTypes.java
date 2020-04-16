@@ -1,4 +1,4 @@
-package com.github.transactioncollector;
+package com.github.transactioncollector.core;
 
 import java.util.stream.Stream;
 

@@ -8,6 +8,14 @@
   <artifactId>TransactionCollector</artifactId>
   <version>1.0</version>
 
+  <name>TransactionCollector</name>
+  <developers>
+    <developer>
+      <name>Vladyslav Udovichenko</name>
+      <email>ecstasy.awesome@gmail.com</email>
+    </developer>
+  </developers>
+
   <properties>
     <java.version>11</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -58,14 +66,6 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.openjfx</groupId>
-        <artifactId>javafx-maven-plugin</artifactId>
-        <version>0.0.5</version>
-        <configuration>
-          <mainClass>com.github.ecstasyawesome.transactioncollector.App</mainClass>
-        </configuration>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
@@ -83,7 +83,7 @@
           <dependency>
             <groupId>com.puppycrawl.tools</groupId>
             <artifactId>checkstyle</artifactId>
-            <version>8.41.1</version>
+            <version>8.42</version>
           </dependency>
         </dependencies>
         <executions>
@@ -112,7 +112,7 @@
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>
-      <version>17-ea+6</version>
+      <version>17-ea+9</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>

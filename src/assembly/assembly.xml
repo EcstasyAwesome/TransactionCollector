@@ -6,11 +6,15 @@
   <includeBaseDirectory>false</includeBaseDirectory>
   <fileSets>
     <fileSet>
-      <directory>${pom.basedir}</directory>
+      <directory>${project.basedir}</directory>
       <outputDirectory>/</outputDirectory>
       <includes>
         <include>pom.xml</include>
       </includes>
+    </fileSet>
+    <fileSet>
+      <directory>${project.basedir}/src/resources</directory>
+      <outputDirectory>/</outputDirectory>
     </fileSet>
   </fileSets>
   <dependencySets>

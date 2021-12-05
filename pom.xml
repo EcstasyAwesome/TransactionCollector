@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.github.ecstasyawesome</groupId>
   <artifactId>TransactionCollector</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
 
   <name>TransactionCollector</name>
   <developers>
@@ -112,12 +112,12 @@
     <dependency>
       <groupId>org.openjfx</groupId>
       <artifactId>javafx-controls</artifactId>
-      <version>17-ea+9</version>
+      <version>17.0.0.1</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.0.0</version>
+      <version>5.1.0</version>
     </dependency>
   </dependencies>
 

@@ -4,6 +4,7 @@ import java.util.stream.Stream;
 
 public enum SupportedTypes {
   XLSX("xlsx"),
+  XLS("xls"),
   ZIP("zip");
 
   public final String pattern;

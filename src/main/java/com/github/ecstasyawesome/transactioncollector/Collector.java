@@ -29,14 +29,23 @@ import org.apache.poi.ss.util.CellRangeAddress;
 public class Collector extends Task<CollectorEvent> {
 
   private final ResourceBundle languageBundle = ResourceContainer.LANGUAGE_BUNDLE;
+  private final String completeMessage = languageBundle.getString("app.complete");
+  private final String errorMessage = languageBundle.getString("app.error");
+  private final String dayTitle = languageBundle.getString("excel.day");
+  private final String sumTitle = languageBundle.getString("excel.sum");
+  private final String totalTitle = languageBundle.getString("excel.total");
   private final Map<LocalDate, Double> data = new TreeMap<>();
   private final List<File> files;
+  private final String dateColumnName;
+  private final String sumColumnName;
   private final int startRow = 1;
   private final int dateColumn = 1;
   private final int sumColumn = 2;
 
-  public Collector(List<File> files) {
+  public Collector(List<File> files, String dateColumnName, String sumColumnName) {
     this.files = files;
+    this.dateColumnName = dateColumnName;
+    this.sumColumnName = sumColumnName;
   }
 
   @Override
@@ -45,7 +54,8 @@ public class Collector extends Task<CollectorEvent> {
     try {
       for (var file : files) {
         var fileName = file.getName();
-        if (fileName.endsWith(SupportedTypes.XLSX.extension)) {
+        if (fileName.endsWith(SupportedTypes.XLSX.extension)
+            || fileName.endsWith(SupportedTypes.XLS.extension)) {
           readFile(new FileInputStream(file), fileName);
         } else if (fileName.endsWith(SupportedTypes.ZIP.extension)) {
           readFilesFromZip(file);
@@ -55,15 +65,16 @@ public class Collector extends Task<CollectorEvent> {
     } catch (Exception e) {
       return new CollectorEvent(Alert.AlertType.ERROR, e.getMessage());
     }
-    var message = String.format(languageBundle.getString("app.complete"), result.getAbsolutePath());
+    var message = String.format(completeMessage, result.getAbsolutePath());
     return new CollectorEvent(Alert.AlertType.INFORMATION, message);
   }
 
   private void readFilesFromZip(File zip) throws IOException {
     try (var archive = new ZipFile(zip)) {
       var entries = archive.stream()
-          .filter(entry ->
-              !entry.isDirectory() && entry.getName().endsWith(SupportedTypes.XLSX.extension))
+          .filter(entry -> !entry.isDirectory()
+                           && (entry.getName().endsWith(SupportedTypes.XLSX.extension)
+                               || entry.getName().endsWith(SupportedTypes.XLS.extension)))
           .toArray(ZipEntry[]::new);
       for (var entry : entries) {
         var name = String.join(File.separator, archive.getName(), entry.getName());
@@ -90,10 +101,10 @@ public class Collector extends Task<CollectorEvent> {
                 final var cell = row.getCell(cellId);
                 if (cell != null && cell.getCellType() == CellType.STRING) {
                   var text = cell.getStringCellValue();
-                  if (!isDateCellDetected && text.equalsIgnoreCase("дата транзакции")) {
+                  if (!isDateCellDetected && text.equalsIgnoreCase(dateColumnName)) {
                     isDateCellDetected = true;
                     dateCellId = cellId;
-                  } else if (!isSumCellDetected && text.equalsIgnoreCase("сумма транзакции")) {
+                  } else if (!isSumCellDetected && text.equalsIgnoreCase(sumColumnName)) {
                     isSumCellDetected = true;
                     sumCellId = cellId;
                   } else if (isDateCellDetected && isSumCellDetected) {
@@ -102,14 +113,24 @@ public class Collector extends Task<CollectorEvent> {
                 }
               }
             } else {
-              final var date = row.getCell(dateCellId);
-              final var sum = row.getCell(sumCellId);
-              if (date != null && date.getCellType() == CellType.STRING
-                  && sum != null && sum.getCellType() == CellType.NUMERIC) {
-                var dateTextValue = date.getStringCellValue();
-                if (dateTextValue.matches("^\\d{2}.\\d{2}.\\d{4}$")) {
-                  var dateValue = LocalDate.parse(dateTextValue, dateTimeFormatter);
-                  var sumValue = row.getCell(sumCellId).getNumericCellValue();
+              var dateValue = (LocalDate) null;
+              var sumValue = (Double) null;
+              try {
+                dateValue = row.getCell(dateCellId).getLocalDateTimeCellValue().toLocalDate();
+                sumValue = row.getCell(sumCellId).getNumericCellValue();
+              } catch (Exception exception) {
+                final var date = row.getCell(dateCellId);
+                final var sum = row.getCell(sumCellId);
+                if (date != null && date.getCellType() == CellType.STRING
+                    && sum != null && sum.getCellType() == CellType.NUMERIC) {
+                  var dateTextValue = date.getStringCellValue();
+                  if (dateTextValue.matches("^\\d{2}.\\d{2}.\\d{4}$")) {
+                    dateValue = LocalDate.parse(dateTextValue, dateTimeFormatter);
+                    sumValue = row.getCell(sumCellId).getNumericCellValue();
+                  }
+                }
+              } finally {
+                if (dateValue != null && sumValue != null) {
                   data.merge(dateValue, sumValue, Double::sum);
                   isEmptyFile = false;
                 }
@@ -119,7 +140,7 @@ public class Collector extends Task<CollectorEvent> {
         }
       }
       if (isEmptyFile) {
-        var message = String.format(languageBundle.getString("app.error"), fileName);
+        var message = String.format(errorMessage, fileName);
         throw new IllegalArgumentException(message);
       }
     }
@@ -160,11 +181,11 @@ public class Collector extends Task<CollectorEvent> {
 
     var dayCell = row.createCell(dateColumn);
     dayCell.setCellStyle(prepareTitleCellStyle(workbook));
-    dayCell.setCellValue(languageBundle.getString("excel.day"));
+    dayCell.setCellValue(dayTitle);
 
     var sumCell = row.createCell(sumColumn);
     sumCell.setCellStyle(prepareTitleCellStyle(workbook));
-    sumCell.setCellValue(languageBundle.getString("excel.sum"));
+    sumCell.setCellValue(sumTitle);
 
     return sheet;
   }
@@ -191,7 +212,7 @@ public class Collector extends Task<CollectorEvent> {
 
     var totalCell = finalRow.createCell(dateColumn);
     totalCell.setCellStyle(style);
-    totalCell.setCellValue(languageBundle.getString("excel.total"));
+    totalCell.setCellValue(totalTitle);
 
     var totalSumCell = finalRow.createCell(sumColumn);
     totalSumCell.setCellStyle(style);
